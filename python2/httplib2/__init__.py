@@ -749,7 +749,7 @@ class ProxyInfo(object):
     bypass_hosts = ()
 
     def __init__(self, proxy_type, proxy_host, proxy_port,
-                 proxy_rdns=True, proxy_user=None, proxy_pass=None):
+                 proxy_rdns=True, proxy_user=None, proxy_pass=None, proxy_headers=None):
         """
         Args:
           proxy_type: The type of proxy server.  This must be set to one of
@@ -770,6 +770,8 @@ class ProxyInfo(object):
           proxy_user: The username used to authenticate with the proxy server.
 
           proxy_pass: The password used to authenticate with the proxy server.
+
+          proxy_headers: Additional or modified headers for the proxy connect request.
         """
         self.proxy_type = proxy_type
         self.proxy_host = proxy_host
@@ -777,10 +779,11 @@ class ProxyInfo(object):
         self.proxy_rdns = proxy_rdns
         self.proxy_user = proxy_user
         self.proxy_pass = proxy_pass
+        self.proxy_headers = proxy_headers
 
     def astuple(self):
         return (self.proxy_type, self.proxy_host, self.proxy_port,
-                self.proxy_rdns, self.proxy_user, self.proxy_pass)
+                self.proxy_rdns, self.proxy_user, self.proxy_pass, self.proxy_headers)
 
     def isgood(self):
         return (self.proxy_host != None) and (self.proxy_port != None)
@@ -858,6 +861,7 @@ def proxy_info_from_url(url, method='http'):
         proxy_port = port,
         proxy_user = username or None,
         proxy_pass = password or None,
+        proxy_headers = None,
     )
 
 
@@ -885,7 +889,7 @@ class HTTPConnectionWithTimeout(httplib.HTTPConnection):
         msg = "getaddrinfo returns an empty list"
         if self.proxy_info and self.proxy_info.isgood():
             use_proxy = True
-            proxy_type, proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass = self.proxy_info.astuple()
+            proxy_type, proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass, proxy_headers = self.proxy_info.astuple()
 
             host = proxy_host
             port = proxy_port
@@ -900,7 +904,7 @@ class HTTPConnectionWithTimeout(httplib.HTTPConnection):
             try:
                 if use_proxy:
                     self.sock = socks.socksocket(af, socktype, proto)
-                    self.sock.setproxy(proxy_type, proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass)
+                    self.sock.setproxy(proxy_type, proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass, proxy_headers)
                 else:
                     self.sock = socket.socket(af, socktype, proto)
                     self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -911,14 +915,14 @@ class HTTPConnectionWithTimeout(httplib.HTTPConnection):
                 if self.debuglevel > 0:
                     print "connect: (%s, %s) ************" % (self.host, self.port)
                     if use_proxy:
-                        print "proxy: %s ************" % str((proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass))
+                        print "proxy: %s ************" % str((proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass, proxy_headers))
 
                 self.sock.connect((self.host, self.port) + sa[2:])
             except socket.error, msg:
                 if self.debuglevel > 0:
                     print "connect fail: (%s, %s)" % (self.host, self.port)
                     if use_proxy:
-                        print "proxy: %s" % str((proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass))
+                        print "proxy: %s" % str((proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass, proxy_headers))
                 if self.sock:
                     self.sock.close()
                 self.sock = None
@@ -1007,7 +1011,7 @@ class HTTPSConnectionWithTimeout(httplib.HTTPSConnection):
         msg = "getaddrinfo returns an empty list"
         if self.proxy_info and self.proxy_info.isgood():
             use_proxy = True
-            proxy_type, proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass = self.proxy_info.astuple()
+            proxy_type, proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass, proxy_headers = self.proxy_info.astuple()
 
             host = proxy_host
             port = proxy_port
@@ -1023,7 +1027,7 @@ class HTTPSConnectionWithTimeout(httplib.HTTPSConnection):
                 if use_proxy:
                     sock = socks.socksocket(family, socktype, proto)
 
-                    sock.setproxy(proxy_type, proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass)
+                    sock.setproxy(proxy_type, proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass, proxy_headers)
                 else:
                     sock = socket.socket(family, socktype, proto)
                     sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -1037,7 +1041,7 @@ class HTTPSConnectionWithTimeout(httplib.HTTPSConnection):
                 if self.debuglevel > 0:
                     print "connect: (%s, %s)" % (self.host, self.port)
                     if use_proxy:
-                        print "proxy: %s" % str((proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass))
+                        print "proxy: %s" % str((proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass, proxy_headers))
                 if not self.disable_ssl_certificate_validation:
                     cert = self.sock.getpeercert()
                     hostname = self.host.split(':', 0)[0]
@@ -1065,7 +1069,7 @@ class HTTPSConnectionWithTimeout(httplib.HTTPSConnection):
                 if self.debuglevel > 0:
                     print "connect fail: (%s, %s)" % (self.host, self.port)
                     if use_proxy:
-                        print "proxy: %s" % str((proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass))
+                        print "proxy: %s" % str((proxy_host, proxy_port, proxy_rdns, proxy_user, proxy_pass, proxy_headers))
                 if self.sock:
                     self.sock.close()
                 self.sock = None
